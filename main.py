@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from game_of_sheeps import Map, SheepsGui
 
-sg = SheepsGui(nsheep=0, nwolves=0)
+sg = SheepsGui(width=60, height=50, nsheep=0, nwolves=0)
 
 
 """

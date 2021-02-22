@@ -66,18 +66,26 @@ class Map:
 
         # Determine index of each tile's neighbor at lower height
         neighbor_dir = np.array([
-            [1, 0],
-            [-1, 0],
             [0, 0],
+            [1, 0],
+            [1, 1],
             [0, 1],
-            [0, -1]
+            [-1, 1],
+            [-1, 0],
+            [-1, -1],
+            [0, -1],
+            [1, -1]
         ])
         roll_height = np.array([
-            np.roll(self.heightmap, 1, 0),
-            np.roll(self.heightmap, -1, 0),
             self.heightmap,
+            np.roll(self.heightmap, 1, 0),  # shift, axis
+            np.roll(self.heightmap, 1, (0, 1)),
             np.roll(self.heightmap, 1, 1),
-            np.roll(self.heightmap, -1, 1)
+            np.roll(np.roll(self.heightmap, -1, 0), 1, 1),  # diagonal
+            np.roll(self.heightmap, -1, 0),
+            np.roll(self.heightmap, -1, (0, 1)),
+            np.roll(self.heightmap, -1, 1),
+            np.roll(np.roll(self.heightmap, 1, 0), -1, 1),
         ])
         min_height_idx = np.argmax(roll_height, axis=0)
         self.downhillmap = np.zeros((height, width, 2), dtype=int)
@@ -95,6 +103,11 @@ class Map:
 
         self.watermap = 3 * np.ones(shape)
         self.foodmap = 1.0 * (np.random.rand(height, width) > 0.6)
+        # remove food at edges
+        self.foodmap[0, :] = 0
+        self.foodmap[-1, :] = 0
+        self.foodmap[:, 0] = 0
+        self.foodmap[:, -1] = 0
         self.grassmap = np.zeros(shape)
         self.image = None
 
@@ -321,14 +334,15 @@ class Map:
 class Wolf:
     """Living thing"""
 
-    def __init__(self, world, i, j, food=10, water=30, max_food=60):
+    def __init__(self, world, i, j, food=10, water=30, max_food=60, max_water=100):
         self.map = world
         self.position = (i, j)  # height, width
         self.food = food
         self.water = water
         self.max_food = max_food
+        self.max_water = max_water
         self.poo_chance = 0.3
-        self.wee_chance = 0.05
+        self.wee_chance = 0.1
         self.hungry = 0.35  # hunts when food < hungry*maxfood
         self.is_dead = False
         self.map.wolf_list += [self]
@@ -394,6 +408,8 @@ class Wolf:
             self.map.typemap[self.position] = self.type
 
     def drink(self):
+        if self.water >= self.max_water:
+            return
         for i in [-1, 0, 1]:
             for j in [-1, 0, 1]:
                 pos = (self.position[0] + i, self.position[1] + j)
@@ -478,15 +494,16 @@ class Wolf:
 class Sheep:
     """Living thing"""
 
-    def __init__(self, world, i, j, food=10, water=30, max_food=20):
+    def __init__(self, world, i, j, food=10, water=30, max_food=20, max_water=100):
         self.map = world
         self.position = (i, j)  # height, width
         self.type = 1  # number in typemap
         self.food = food
         self.water = water
+        self.max_water = max_water
         self.max_food = max_food
         self.poo_chance = 0.05
-        self.wee_chance = 0.1
+        self.wee_chance = 0.2
         self.hungry = 0.4  # grazes when food < hungry*maxfood
         self.sight_distance = 3  # runs from wolf when wolf within sight_distance
         self.is_dead = False
@@ -574,6 +591,8 @@ class Sheep:
             self.map.typemap[self.position] = self.type
 
     def drink(self):
+        if self.water >= self.max_water:
+            return
         for i in [-1, 0, 1]:
             for j in [-1, 0, 1]:
                 pos = (self.position[0] + i, self.position[1] + j)
